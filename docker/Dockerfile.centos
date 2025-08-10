@@ -1,0 +1,30 @@
+ARG VERSION_NUM="7"
+FROM centos:$VERSION_NUM
+ARG VERSION_NUM
+ARG CHINA_MIRROR=0
+LABEL Author="Rex Zhou <zrx879582094@gmail.com>"
+
+WORKDIR /data
+
+# Copy all files
+COPY . /data
+
+RUN export CHINA_MIRROR="$CHINA_MIRROR" && \
+    bash ./docker/modify_yum_source.sh && \
+    if [ "$VERSION_NUM" = "8" ]; then \
+        yum install -y perl perl-IPC-Cmd && \
+        yum install -y 'dnf-command(config-manager)' && \
+        yum config-manager --set-enabled powertools; \
+    elif [ "$VERSION_NUM" = "7" ] || [ "$VERSION_NUM" = "6" ]; then \
+        yum install -y perl-IPC-Cmd; \
+    elif [ "$VERSION_NUM" = "5" ]; then \
+        yum install -y gcc44; \
+    fi && \
+    yum groupinstall -y "Development Tools" && \
+    yum install -y imake rpm-build pam-devel krb5-devel zlib-devel libXt-devel libX11-devel gtk2-devel && \
+    yum clean all && \
+    find . -type f -name '.keep' -delete && \
+    sed -i "s/--define 'skip_x11_askpass 1'/--define \"debug_package %{nil}\"/" ./compile.sh && \
+    bash ./pullsrc.sh
+
+CMD ["bash", "/data/compile.sh"]
